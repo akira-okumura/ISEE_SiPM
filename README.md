@@ -1,2 +1,2 @@
-# isee_sipm
+# ISEE_SiPM
 Common toolset for SiPM analysis
