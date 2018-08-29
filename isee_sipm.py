@@ -2,6 +2,10 @@ import gzip, struct, enum, ROOT
 import numpy as np
 
 def gzip2waveforms(raw_data_file_name):
+    '''
+    Convert a gzipped raw data file into SiPMWaveform instances. Here we assume
+    individual waveforms are separated by '***'.
+    '''
     try:
         f = gzip.open(raw_data_file_name)
         raw_data = f.read()
@@ -31,6 +35,9 @@ class SiPMWaveform:
         if raw_data.find(b'\r\n";') >= 0:
             self.instrument = InstrumentType.LE_CROY
             self.decode_lecroy_raw_data(raw_data)
+        elif len(raw_data.split(b';')) == 17:
+            self.instrument = InstrumentType.TEKTRONIX
+            self.decode_tektronix_raw_data(raw_data)
         else:
             # Write other functions for TARGET modules and Tektronix
             raise 'Not implemented yet'
@@ -73,7 +80,72 @@ class SiPMWaveform:
         self.xarray = dt * np.arange(Npt)
 
     def decode_tektronix_raw_data(self, raw_data):
-        pass
+        self.header = raw_data.split(b';')[:16]
+        byt_nr =   int(header[ 0])
+        bit_nr =   int(header[ 1])
+        encdg  =       header[ 2]
+        bn_fmt =       header[ 3]
+        byt_or =       header[ 4]
+        wfid   =       header[ 5]
+        nr_pt  =   int(header[ 6])
+        pt_fmt =       header[ 7]
+        xunit  =       header[ 8]
+        #xincr  = float(header[ 9])
+        xzero  = float(header[10])
+        pt_off =  bool(int(header[11]))
+        yunit  =       header[12]
+        #ymult  = float(header[13])
+        #yoff   = float(header[14])
+        #yzero  = float(header[15])
+
+        header_length = 0
+        for i in range(16):
+            header_length += len(header[i]) + 1
+            raw_data = raw_data[header_length:]
+
+        if raw_data[0] == '#':
+            # binary data
+            x = int(raw_data[1])
+            yyy = int(raw_data[2:2 + x])
+            if yyy != byt_nr*nr_pt:
+                raise RuntimeError('NR_PT (numbr of point) is invalid.')
+            if len(raw_data[2 + x:]) > byt_nr*nr_pt:
+                raise RuntimeError('Received data length is too long.')
+            elif len(raw_data[2 + x:]) < byt_nr*nr_pt:
+                raise RuntimeError('Received data length is too short.')
+
+            # RI means signed integer
+            # RP means positive (unsigned) integer
+            # MSB means the MSB is transmitted first
+            # LSB means the LSB is transmitted first
+            format = ''
+            if byt_or == 'MSB':
+                format += '>'
+            elif byt_or == 'LSB':
+                format += '<'
+            else:
+                raise RuntimeError('Invalid BYT_OR (%s)' % byt_or)
+
+            if bn_fmt == 'RI' and byt_nr == 1:
+                # signed char
+                format += 'b'*nr_pt
+            elif bn_fmt == 'RI' and byt_nr == 2:
+                # signed short
+                format += 'h'*nr_pt
+            elif bn_fmt == 'RP' and byt_nr == 1:
+                # unsigned char
+                format += 'B'*nr_pt
+            elif bn_fmt == 'RP' and byt_nr == 2:
+                # unsigned char
+                format += 'H'*nr_pt
+            else:
+                raise RuntimeError('Invalid binary format BN_FMT(%s) BYT_NR(%d).' % (bn_fmt, byt_nr))
+            sefl.yarray = numpy.array(struct.unpack(format, raw_data[2 + x:])) * self.get_vscale() + yzero - self.get_voffset()
+        else:
+            # ASCII data
+            pass
+
+        self.xarray = (numpy.arange(nr_pt) - pt_off) * self.get_dt() + xzero
 
     def decode_target_raw_data(self, raw_data):
         pass
@@ -89,24 +161,32 @@ class SiPMWaveform:
     def get_dt(self):
         if self.instrument == InstrumentType.LE_CROY:
             return float(self.header[b'HORIZ_INTERVAL'])
+        elif self.instrument == InstrumentType.TEKTRONIX:
+            return float(self.header[9])
         else:
             raise 'Not implemented yet'
 
     def get_dv(self):
         if self.instrument == InstrumentType.LE_CROY:
             return float(self.header[b'VERTICAL_GAIN']) * 2 ** (16 - int(self.header[b'NOMINAL_BITS']))
+        elif self.instrument == InstrumentType.TEKTRONIX:
+            return float(self.header[])
         else:
             raise 'Not implemented yet'
 
     def get_vscale(self):
         if self.instrument == InstrumentType.LE_CROY:
             return float(self.header[b'VERTICAL_GAIN'])
+        elif self.instrument == InstrumentType.TEKTRONIX:
+            return float(self.header[13])
         else:
             raise 'Not implemented yet'
 
     def get_voffset(self):
         if self.instrument == InstrumentType.LE_CROY:
             return float(self.header[b'VERTICAL_OFFSET'])
+        elif self.instrument == InstrumentType.TEKTRONIX:
+            return float(self.header[14]) * self.get_vscale()
         else:
             raise 'Not implemented yet'
 
