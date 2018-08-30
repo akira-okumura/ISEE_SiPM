@@ -3,7 +3,7 @@ from distutils.core import setup
 description = '''Common Python toolset for SiPM analysis'''
 
 setup(name='ISEE_SiPM',
-      version='1.0.0',
+      version='1.1.0',
       description='Commont Python toolset for SiPM analysis',
       author='Akira Okumura',
       author_email='oxon@mac.com',
