@@ -4,7 +4,7 @@ description = '''Common Python toolset for SiPM analysis'''
 
 setup(name='ISEE_SiPM',
       version='1.1.0',
-      description='Commont Python toolset for SiPM analysis',
+      description='Common Python toolset for SiPM analysis',
       author='Akira Okumura',
       author_email='oxon@mac.com',
       license='MIT License',
