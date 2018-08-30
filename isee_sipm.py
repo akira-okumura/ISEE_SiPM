@@ -1,7 +1,8 @@
 import gzip, struct, enum, ROOT
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 
-def gzip2waveforms(raw_data_file_name):
+def gzip2waveforms(raw_data_file_name, nprocess=1):
     '''
     Convert a gzipped raw data file into SiPMWaveform instances. Here we assume
     individual waveforms are separated by '***'.
@@ -13,12 +14,14 @@ def gzip2waveforms(raw_data_file_name):
         if e.args[0].find('Not a gzipped file') == 0:
             f = open(raw_data_file_name)
             raw_data = f.read()
-
     raw_data_list = raw_data.split(b'***')[:-1] # Assume here that *** is used as data splitter
-    waveform_list = []
-    for rd in raw_data_list:
-        waveform_list.append(SiPMWaveform(rd))
-
+    if nprocess > 1:
+        executor = ProcessPoolExecutor(max_workers = nprocess)
+        futures = [executor.submit(SiPMWaveform, rd) for rd in raw_data_list]
+        waveform_list = [f.result() for f in futures]
+    else:
+        waveform_list = [SiPMWaveform(rd) for rd in raw_data_list]
+    
     return waveform_list
 
 class InstrumentType(enum.Enum):
@@ -68,7 +71,7 @@ class SiPMWaveform:
 
         # unpack raw wavedata
         # 16-bit signed integar (h) with lofirst order (>)
-        self.yarray = 1.0 * np.array(struct.unpack('>' + 'h' * Npt, wave_byte))
+        self.yarray = np.array(struct.unpack('>' + 'h' * Npt, wave_byte))
 
         # scale y and add offset
         vscale = self.get_vscale()
@@ -77,7 +80,7 @@ class SiPMWaveform:
 
         # set x array
         dt = self.get_dt()
-        self.xarray = dt * np.arange(Npt)
+        self.xarray = np.linspace(0, dt*(Npt - 1), Npt)
 
     def decode_tektronix_raw_data(self, raw_data):
         self.header = raw_data.split(b';')[:16]
@@ -170,7 +173,7 @@ class SiPMWaveform:
         if self.instrument == InstrumentType.LE_CROY:
             return float(self.header[b'VERTICAL_GAIN']) * 2 ** (16 - int(self.header[b'NOMINAL_BITS']))
         elif self.instrument == InstrumentType.TEKTRONIX:
-            return float(self.header[])
+            return self.get_vscale()
         else:
             raise 'Not implemented yet'
 
