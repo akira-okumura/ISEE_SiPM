@@ -125,6 +125,7 @@ class SiPMWaveform:
             # RP means positive (unsigned) integer
             # MSB means the MSB is transmitted first
             # LSB means the LSB is transmitted first
+            
             format = ''
             if byt_or == b'MSB':
                 format += '>'
