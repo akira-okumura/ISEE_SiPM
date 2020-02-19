@@ -38,12 +38,12 @@ class SiPMWaveform:
         if raw_data.find(b'\r\n";') >= 0:
             self.instrument = InstrumentType.LE_CROY
             self.decode_lecroy_raw_data(raw_data)
-        elif len(raw_data.split(b';')) == 17:
+        elif len(raw_data.split(b';')) >= 17:
             self.instrument = InstrumentType.TEKTRONIX
             self.decode_tektronix_raw_data(raw_data)
         else:
             # Write other functions for TARGET modules and Tektronix
-            raise 'Not implemented yet'
+            raise RuntimeError('Not implemented yet')
 
     def decode_lecroy_raw_data(self, raw_data):
         """
@@ -172,7 +172,7 @@ class SiPMWaveform:
         elif self.instrument == InstrumentType.TEKTRONIX:
             return float(self.header[9])
         else:
-            raise 'Not implemented yet'
+            raise RuntimeError('Not implemented yet')
 
     def get_dv(self):
         if self.instrument == InstrumentType.LE_CROY:
@@ -180,7 +180,7 @@ class SiPMWaveform:
         elif self.instrument == InstrumentType.TEKTRONIX:
             return self.get_vscale()
         else:
-            raise 'Not implemented yet'
+            raise RuntimeError('Not implemented yet')
 
     def get_vscale(self):
         if self.instrument == InstrumentType.LE_CROY:
@@ -188,7 +188,7 @@ class SiPMWaveform:
         elif self.instrument == InstrumentType.TEKTRONIX:
             return float(self.header[13])
         else:
-            raise 'Not implemented yet'
+            raise RuntimeError('Not implemented yet')
 
     def get_voffset(self):
         if self.instrument == InstrumentType.LE_CROY:
@@ -196,7 +196,7 @@ class SiPMWaveform:
         elif self.instrument == InstrumentType.TEKTRONIX:
             return float(self.header[14]) * self.get_vscale()
         else:
-            raise 'Not implemented yet'
+            raise RuntimeError('Not implemented yet')
 
     def get_n(self):
         return len(self.xarray)
