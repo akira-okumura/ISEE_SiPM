@@ -28,6 +28,7 @@ class InstrumentType(enum.Enum):
     TEKTRONIX = 0
     LE_CROY = 1
     TARGET7 = 2
+    GDS = 3
 
 class SiPMWaveform:
     def __init__(self, raw_data):
@@ -38,6 +39,9 @@ class SiPMWaveform:
         if raw_data.find(b'\r\n";') >= 0:
             self.instrument = InstrumentType.LE_CROY
             self.decode_lecroy_raw_data(raw_data)
+        elif raw_data.find(b'Memory Length') >= 0:
+            self.instrument = InstrumentType.GDS
+            self.decode_GDS_raw_data(raw_data)
         elif len(raw_data.split(b';')) >= 17:
             self.instrument = InstrumentType.TEKTRONIX
             self.decode_tektronix_raw_data(raw_data)
@@ -155,6 +159,45 @@ class SiPMWaveform:
 
         self.xarray = (np.arange(nr_pt) - pt_off) * self.get_dt() + xzero
 
+    def decode_GDS_raw_data(self, raw_data):
+        """
+        input : GDS rawdata
+                acquired by command
+        output : x(numpy array, y(numpy array), header_info (dictionary))
+        """
+
+        marker = raw_data.find(b'#')
+        if raw_data[:13] == b'Memory Length': 
+            header_raw = raw_data[ : marker + 7] #GDS-3504
+            waveform_raw = raw_data[marker + 7 :]
+        else: 
+            header_raw = raw_data[ : marker + 9] #GDS-2204
+            waveform_raw = raw_data[marker + 9 :]
+
+        self.header = {}
+        for elem in header_raw.split(b';'):
+            if b"," in elem:
+                key, value = elem.split(b",")
+                self.header[key.replace(b' ', b'')] = value.replace(b' ', b'').replace(b'r', b'')
+                
+        Npt = int(self.header[b'MemoryLength'])
+        Nbyte = Npt * 2 # 16-bit
+        
+        # unpack raw wavedata
+        # 16-bit signed integar (h) with lofirst order (>)
+
+        self.yarrayy = 1.0 * np.array(struct.unpack('>' + 'h' * Npt, waveform_raw))
+
+        # scale y and add offset
+        vscale = self.get_vscale()
+        voffset = self.get_voffset()
+        self.yarray = vscale * self.yarrayy / 25
+
+        # set x array
+        dt = self.get_dt()
+        self.xarray = 1.0 * np.linspace(0, dt * (Npt - 1), Npt)
+
+
     def decode_target_raw_data(self, raw_data):
         pass
 
@@ -171,6 +214,8 @@ class SiPMWaveform:
             return float(self.header[b'HORIZ_INTERVAL'])
         elif self.instrument == InstrumentType.TEKTRONIX:
             return float(self.header[9])
+        elif self.instrument == InstrumentType.GDS:
+            return float(self.header[b'SamplingPeriod'])
         else:
             raise RuntimeError('Not implemented yet')
 
@@ -178,7 +223,9 @@ class SiPMWaveform:
         if self.instrument == InstrumentType.LE_CROY:
             return float(self.header[b'VERTICAL_GAIN']) * 2 ** (16 - int(self.header[b'NOMINAL_BITS']))
         elif self.instrument == InstrumentType.TEKTRONIX:
-            return self.get_vscale()
+            return self.get_vscale() * (2 ** 8)
+        elif self.instrument == InstrumentType.GDS:
+            return float(self.header[b'VerticalScale'])/(25.)
         else:
             raise RuntimeError('Not implemented yet')
 
@@ -187,6 +234,8 @@ class SiPMWaveform:
             return float(self.header[b'VERTICAL_GAIN'])
         elif self.instrument == InstrumentType.TEKTRONIX:
             return float(self.header[13])
+        elif self.instrument == InstrumentType.GDS:
+            return float(self.header[b'VerticalScale'])
         else:
             raise RuntimeError('Not implemented yet')
 
@@ -195,6 +244,8 @@ class SiPMWaveform:
             return float(self.header[b'VERTICAL_OFFSET'])
         elif self.instrument == InstrumentType.TEKTRONIX:
             return float(self.header[14]) * self.get_vscale()
+        elif self.instrument == InstrumentType.GDS:
+            return float(self.header[b'VerticalPosition'])
         else:
             raise RuntimeError('Not implemented yet')
 
