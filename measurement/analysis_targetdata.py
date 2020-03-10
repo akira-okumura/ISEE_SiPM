@@ -21,10 +21,6 @@ ns = 1e-9 * s # (ns)
 V = 1 # (V)
 mV = 1e-3 * V # (mV)
 
-
-
-
-
 class SiPM:
     def __init__(self, filename, asic, channel, create):
         self.filename = filename
@@ -35,8 +31,9 @@ class SiPM:
         if create == 0:
             dirname = filename
             hfile = ROOT.TFile("%s/hist_as%d_ch%d.root" %(dirname, self.asic, self.channel))
-            self.hNoise = hfile.Get('noise').Clone()
-            self.hSignal = hfile.Get('signal').Clone()
+
+            self.hNoise = hfile.Get('noise%s.fits %d %d;1' % (self.filename.replace("hists/", ""), self.asic, self.channel)).Clone()
+            self.hSignal = hfile.Get('signal%s.fits %d %d;1' % (self.filename.replace("hists/", ""), self.asic, self.channel)).Clone()
             self.hNoise.SetDirectory(0)
             self.hSignal.SetDirectory(0)
             hfile.Close()
@@ -85,9 +82,9 @@ class SiPM:
             max_bin = np.argmax(ampl[ievt])
             self.hpeaktime.Fill(max_bin)
             ################################# 生波形の抽出 #################################################################
-            if 360 > max_bin > 280 and count_wave < 50 :  ###################### ここで、描画する生波形を取得するための条件を指定する
-                self.g_waveform.append( ROOT.TGraph(NSamples,np.arange(NSamples)*1.0, ampl[ievt]) )
-                count_wave += 1
+            #if 360 > max_bin > 280 and count_wave < 50 :  ###################### ここで、描画する生波形を取得するための条件を指定する
+            self.g_waveform.append( ROOT.TGraph(NSamples,np.arange(NSamples)*1.0, ampl[ievt]) )
+            count_wave += 1
 
 
         for ievt in tqdm(range(0, useEvents), leave = False, desc = "Events"):
@@ -402,7 +399,9 @@ for i in range(int(len(file_list)/16) +1 ):
     c_p0[i].Divide(4,4)
     c_p1[i].Divide(4,4)
     c_p01[i].Divide(4,4)
+    
 i_file = 0
+
 for file_n in tqdm(file_list):
     sipm_data[i_file] = PEdistr("hists/"+file_list[i_file].replace(".fits",""))
 

@@ -10,6 +10,8 @@ def Takedata(outfile, wforms, runid, vped):
     SleepTime = int(wforms) / 119. # send trigger ~120 Hz
     runID = runid   
     Vped = int((int(vped) - 19.2) / 0.6)
+    #Vped = int((int(vped) - 21) / 0.6)
+    #Vped = vped
 
     
     my_ip = "192.168.1.22"

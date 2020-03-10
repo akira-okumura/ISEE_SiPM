@@ -40,9 +40,11 @@ angle = 0
 
 #PMT Setting up
 
-vhighs = [0, 2000, 2500, 3000, 3500, 4000]
+vhighs = [0, 10, 20, 2000, 2500, 3000, 3500, 4000]
+#vhighs = [0, 0, 0, 0, 0]
 
 
+measurement = 0
 for i in range(len(vhighs)):
 
     print("\n\n\t=====Starting the cycle for angle: %d degrees =====" % angle)
@@ -55,7 +57,7 @@ for i in range(len(vhighs)):
         print("...")
         time.sleep(1)
 
-    stage.rotation(angle, 50)
+    #stage.rotation(angle, 50)
     
     current_pos = stage.GetAngle()
     
@@ -77,11 +79,13 @@ for i in range(len(vhighs)):
     time.sleep(10)
 
     print("Setting up the FG:TARGET")
-    fg.target_V(4, vhighs[i], 0)
+    fg.target_V(4, vhighs[i], 0, 0)
     time.sleep(1)
 
     print("Reading SiPM")
-    Takedata_TARGET.Takedata("test/data0301/V%d_0_%dnm_NoLED.fits" % (vhighs[i], wavelength), 1000, target_runid, 900)
+    Takedata_TARGET.Takedata("test/data0310_2/V%d_0_%dnm_NFCOFF.fits" % (vhighs[i], wavelength), 1000, target_runid, 900)
+    #Takedata_TARGET.Takedata("test/data0305/V%d_0_%dnm_try%dTriggerDelay320.fits" % (vhighs[i], wavelength, measurement), 1000, target_runid, 900)
+    measurement += 1
 
     target_runid = 1
 

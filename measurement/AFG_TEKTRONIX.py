@@ -40,6 +40,10 @@ class AFG3251(object):
 
     def getBurstMode(self):
         return self.query('SOURce:BURSt:MODE?')
+
+    def setBurstDelay(self, delay):
+        command = 'BURSt:TDELay %dns' % delay #Set BURST Trigger delay = 0.0
+        self.write(command)
         
     def setBurstNcycles(self, N):
         command = 'SOURce:BURSt:NCYCles %d' % N
@@ -59,7 +63,7 @@ class AFG3251(object):
         return self.query('SOURce:FUNCtion?')
 
     def setPulseDelay(self, delay):
-        command = 'SOURce:PULSe:DELay %dns' %delay
+        command = 'SOURce:PULSe:DELay %dns' % delay
         self.write(command)
         
     def getPulseDelay(self):

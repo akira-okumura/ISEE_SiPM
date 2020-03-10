@@ -19,7 +19,7 @@ def maketf(channel, cell):
     for i in tqdm(range(int(dac_counts/step)), desc = "DAC counts / step", leave = False):
         counts = i * step   #current DAC value
         vped = 19.2 + 0.6 * counts #pedestal voltage
-        filename = '/Volumes/Untitled/kuroda/2020target/run/20200221run/TF_acq_%d.fits' % counts #input file name
+        filename = '/Volumes/Untitled/kuroda/2020target/run/202003run_Delay352/TF_acq_%d.fits' % counts #input file name
 
         reader = target_io.EventFileReader(filename)
         NEvents  = reader.GetNEvents()
@@ -45,7 +45,7 @@ def maketf(channel, cell):
 
     return tf
 
-for j in tqdm(range(0,64), desc = "channel"):
+for j in tqdm(range(13,64), desc = "channel"):
     tfs = [] #list of TFs for every capacitor in the channel
     x = np.arange(0, dac_counts, step).astype(float) #array for x values of the TF (voltage)
     for i in range(int(dac_counts/step)):
@@ -61,7 +61,8 @@ for j in tqdm(range(0,64), desc = "channel"):
         tfs.append(y) #add the TF to the list
         del tf
 
-    scipy.io.savemat("/Volumes/Untitled/kuroda/2020target/transfer_fun/TF/20200223mat/tf_chan%i.mat" % j, {'TFs':tfs}) #save the TFs for the channel
+    scipy.io.savemat("/Volumes/Untitled/kuroda/2020target/transfer_fun/TF/mat20200309_Delay352/tf_chan%i.mat" % j, {'TFs':tfs}) #save the TFs for the channel
     dt_now = datetime.datetime.now()
     print(dt_now)
+
 

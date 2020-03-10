@@ -7,9 +7,6 @@ import Takedata_TARGET
 import PowerSupply_control
 import TC_08_2
 
-
-target_runid = 0
-
 print("Power on")
 ps = PowerSupply_control.PS()
 ps.Open()
@@ -18,13 +15,17 @@ ps.OutputON_Stage()
 
 time.sleep(100)
 
-Temp_file = open("/Volumes/Untitled/kuroda/2020target/run/20200221run/Temp.dat", "w")
+Temp_file = open("/Volumes/Untitled/kuroda/2020target/run/202003run_Delay352/Temp.dat", "w")
 
+target_runid = 0
+Takedata_TARGET.Takedata("/Volumes/Untitled/kuroda/2020target/run/202003run_Delay352/dummy.fits", 200, target_runid, 0)
+
+target_runid = 1
 for i in range(0, 4096, 1):
-  Takedata_TARGET.Takedata("/Volumes/Untitled/kuroda/2020target/run/20200221run/TF_acq_%d.fits" % (i), 100, target_runid, i)
-  target_runid = 1
-  time.sleep(0.5)
+  Takedata_TARGET.Takedata("/Volumes/Untitled/kuroda/2020target/run/202003run_Delay352/TF_acq_%d.fits" % (i), 200, target_runid, i)
 
+
+  time.sleep(0.5)
   
   temp = TC_08_2.GetTemp()
   dt_now = datetime.datetime.now()

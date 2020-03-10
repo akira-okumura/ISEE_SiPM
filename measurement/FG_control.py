@@ -5,7 +5,7 @@ import AFG_TEKTRONIX
 Pulse_Geneartor Setting script
 
 import FG_control
-FG = FG_control.FG_setinit()
+FG = FG_control.FG()
 FG_setinit.monitor(wl)
 
 witten by YK
@@ -88,10 +88,10 @@ class FG(object):
         
         print("The FG is ready")
 
-    def target_V(self, width, vhigh, vlow):
+    def target_V(self, width, vhigh, vlow, delay):
         #must be changed
         period = 500
-        delay = 0
+        #delay = 0
         
         print("turning output off")
         self.tek.setOutputOFF()
