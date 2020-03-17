@@ -34,9 +34,11 @@ class SiPM:
         dT = 1 * ns
         bin_width = dV * dT / mV / ns * 750
 
+        '''
         self.hNoise = ROOT.TH1D("noise","noise;Charge (mV #times ns);", 1000, -299.5 * bin_width, 700.5 * bin_width)
         self.hSignal = ROOT.TH1D("signal","signal;Charge (mV #times ns);", 1000, -299.5 * bin_width, 700.5 * bin_width)
-        print('\nanalyzing a%d ch%d'%(self.asic,self.channel))
+        '''
+        
 
         # Time window for integration. integral +/- 6 ns around the peak
         tw = 12 # change
@@ -47,52 +49,67 @@ class SiPM:
         reader = target_io.EventFileReader(self.filename)
         NEvents  = reader.GetNEvents()
         useEvents = NEvents
-        print("found %d events, using %d events"%(NEvents, useEvents))
+        #print("found %d events, using %d events"%(NEvents, useEvents))
         ampl = np.zeros([NEvents,NSamples])
 
-        # Directory of transfer functions
-        #tf_filename = '/Users/az/CTA/work/PMT_SiPM_Nagoya/target/TF/new_run/mat/tf_chan%d.mat' % chann
-        tf_filename = '/Volumes/Untitled/kuroda/2020target/transfer_fun/TF/mat/tf_chan%d.mat' % chann
+        self.g_waveform = []
+        self.hpeaktime = ROOT.TH1D("peaktime%s %d %d" % (self.filename, self.asic, self.channel),"peaktime;time (ns);", NSamples + 1 , -0.5, NSamples + 0.5)
+        self.hNoise = ROOT.TH1D("noise%s %d %d" % (self.filename, self.asic, self.channel),"noise;Charge (mV #times ns);", 1000, -299.5 * bin_width, 700.5 * bin_width)
+        self.hSignal = ROOT.TH1D("signal%s %d %d" % (self.filename, self.asic, self.channel),"signal;Charge (mV #times ns);", 1000, -299.5 * bin_width, 700.5 * bin_width)
+        #print('\nanalyzing a%d ch%d'%(self.asic,self.channel))
+
+
+        # Directory of transfer functions　##################################
+        tf_filename = '/Volumes/Untitled/kuroda/2020target/transfer_fun/TF/mat/tf_chan%d.mat' % chann ######## tf file のディレクトリを指定する
         mat_tf = scipy.io.loadmat(tf_filename)
 
-        for i_event in tqdm(range(useEvents)):
-            rawdata = reader.GetEventPacket(i_event,chann)
+        for ievt in tqdm(range(useEvents), leave = False, desc = "Events_TF"):
+            rawdata = reader.GetEventPacket(ievt,chann)
             packet = target_driver.DataPacket()
             packet.Assign(rawdata, reader.GetPacketSize())
             wf = packet.GetWaveform(0)
 
             for sample in range(NSamples):
-                ampl[i_event, sample] = mat_tf.get('TFs')[sample, wf.GetADC(sample0+sample)]
+                ampl[ievt, sample] = mat_tf.get('TFs')[sample, wf.GetADC(sample0+sample)]
 
+            
+
+        for ievt in tqdm(range(useEvents), leave = False, desc = "Events_graph"):
+            #### peak search ####
+            max_bin = np.argmax(ampl[ievt])
+            self.hpeaktime.Fill(max_bin)
+            #### plot graph ####
+            self.g_waveform.append(ROOT.TGraph(NSamples, np.arange(NSamples) * 1.0, ampl[ievt]))
+            
         # Fill noise
-        for i_event in tqdm(range(0, useEvents)):
+        for ievt in tqdm(range(useEvents), leave = False, desc = "Events_Noise"):
             t_peak = 190 # change
             charge = 0.
-            mean = np.mean(ampl[i_event, t_peak - 50 : t_peak])
-            stdev = np.std(ampl[i_event, t_peak - 50 : t_peak])
-            if (np.amax(ampl[i_event, t_peak - 50 : t_peak]) - np.amin(ampl[i_event, t_peak - 50 : t_peak]) > 10):
+            mean = np.mean(ampl[ievt, t_peak - 50 : t_peak])
+            stdev = np.std(ampl[ievt, t_peak - 50 : t_peak])
+            if (np.amax(ampl[ievt, t_peak - 50 : t_peak]) - np.amin(ampl[ievt, t_peak - 50 : t_peak]) > 10):
                 continue
       
             for cell in range(t_peak, t_peak + 2 * tw):
-                if ampl[i_event, cell] >= mean - 2 * stdev:
-                    charge += ampl[i_event, cell]
+                if ampl[ievt, cell] >= mean - 2 * stdev:
+                    charge += ampl[ievt, cell]
                 else:
                     charge += mean
             charge -= mean * tw * 2
             self.hNoise.Fill(charge)
 
             # Fill signal
-        for i_event in tqdm(range(0, useEvents)):
+        for ievt in tqdm(range(0, useEvents), leave = False, desc = "Events_signal"):
             t_peak = 297 # change
             charge = 0.
-            mean = np.mean(ampl[i_event, t_peak - 50 : t_peak])
-            stdev = np.std(ampl[i_event, t_peak - 50 : t_peak])
-            if (np.amax(ampl[i_event, t_peak - 50 : t_peak]) - np.amin(ampl[i_event, t_peak - 50 : t_peak]) > 10):
+            mean = np.mean(ampl[ievt, t_peak - 50 : t_peak])
+            stdev = np.std(ampl[ievt, t_peak - 50 : t_peak])
+            if (np.amax(ampl[ievt, t_peak - 50 : t_peak]) - np.amin(ampl[ievt, t_peak - 50 : t_peak]) > 10):
                 continue
-
+            # charge = np.sum(ampl[ievt, t_peak : t_peak + 2 * tw]) - mean * tw * 2
             for cell in range(t_peak, t_peak + 2 * tw):
-                if ampl[i_event, cell] >= mean - 2 * stdev:
-                    charge += ampl[i_event, cell]
+                if ampl[ievt, cell] >= mean - 2 * stdev:
+                    charge += ampl[ievt, cell]
                 else:
                     charge += mean
             charge -= mean * tw * 2
@@ -106,11 +123,9 @@ class SiPM:
             os.mkdir(dirname)
         dirname = '%s/%s' % (dirname, self.filename[:-5])
         if not os.path.exists(dirname):
-            try:
-                os.mkdir(dirname)
-            except:
-                print('Failed to mkdir. Already exists?')
-        hfile = ROOT.TFile("%s/hist_as%d_ch%d.root" %(dirname, self.asic, self.channel), "recreate")
+            os.mkdir(dirname)
+        hfile = ROOT.TFile("%s/hist_as%d_ch%d.root" % (dirname, self.asic, self.channel), "recreate")
+
         self.hNoise.Write()
         self.hSignal.Write()
         hfile.Close()
@@ -122,7 +137,18 @@ class SiPM:
     def GetSignal(self):
         return self.hSignal
 
+    def DellHist(self):
+        del self.hSignal
+        del self.hNoise
+        del self.g_waveform
+        del self.hpeaktime
 
+    def GetPeaktime(self):
+        return self.hpeaktime
+
+    def GetGwaveform(self):
+        return self.g_waveform
+        
 
     #
     # NSamples = 448
